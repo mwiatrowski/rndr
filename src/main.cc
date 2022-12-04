@@ -1,9 +1,10 @@
 #include "drawing.h"
+#include "math.h"
 #include "window.h"
 
 namespace {
 
-auto const TRIANGLE = Triangle{cv::Vec2f{10, 400}, cv::Vec2f{300, 300}, cv::Vec2f{300, 500}};
+auto const TRIANGLE = Triangle{Vec2{100, 500}, Vec2{400, 100}, Vec2{700, 500}};
 
 }
 
