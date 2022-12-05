@@ -11,4 +11,4 @@ auto clearImage(cv::Mat &img, cv::Vec3b color) -> void;
 using Vertex = Vec2;
 using Triangle = std::array<Vertex, 3>;
 
-auto drawTriangle(cv::Mat &img, Triangle const &vertices, cv::Vec3b color) -> void;
+auto drawTriangle(cv::Mat &img, Triangle const &vertices) -> void;
