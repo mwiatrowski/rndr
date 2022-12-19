@@ -1,11 +1,12 @@
 #include "drawing.h"
 #include "math.h"
+#include "transform.h"
 #include "window.h"
 
 namespace {
 
-auto const QUAD = Mesh{Triangle{Vec2{-0.5, -0.5}, Vec2{-0.5, 0.5}, Vec2{0.5, -0.5}},
-                       Triangle{Vec2{0.5, -0.5}, Vec2{-0.5, 0.5}, Vec2{0.5, 0.5}}};
+auto const QUAD = Mesh{Triangle{Vec3{-0.5, -0.5, 0}, Vec3{-0.5, 0.5, 0}, Vec3{0.5, -0.5, 0}},
+                       Triangle{Vec3{0.5, -0.5, 0}, Vec3{-0.5, 0.5, 0}, Vec3{0.5, 0.5, 0}}};
 
 } // namespace
 
@@ -13,12 +14,17 @@ auto main(int argc, char *argv[]) -> int {
     (void)argc;
     (void)argv;
 
-    cv::Mat frameBuffer = cv::Mat::zeros(cv::Size{1920, 1080}, CV_8UC3);
+    cv::Mat frameBuffer = cv::Mat::zeros(cv::Size{640, 480}, CV_8UC3);
     auto main_window = Window("Renderer demo");
 
     while (true) {
         clearImage(frameBuffer, cv::Vec3f(255, 200, 200));
-        drawMesh(frameBuffer, QUAD);
+
+        for (int i = 0; i < 3; ++i) {
+            auto step = i / 3.f;
+            auto translation = translationTransform(Vec3{step, -step, step});
+            drawMesh(frameBuffer, QUAD, translation);
+        }
 
         auto key = main_window.showAndGetKey(frameBuffer);
         if (key == 27) {

@@ -6,11 +6,30 @@
 
 namespace {
 
-auto remapToScreen(cv::Mat const &img, Triangle const &triangle) {
+using Triangle2D = std::array<Vec2, 3>;
+
+auto operator*(Vertex const &vertex, Mat4 const &transform) -> Vertex {
+    auto const &[x, y, z] = vertex;
+    auto v2 = Vec4{x, y, z, 1} * transform;
+
+    auto const &x2 = v2[0];
+    auto const &y2 = v2[1];
+    auto const &z2 = v2[2];
+    auto const &w2 = v2[3];
+
+    return w2 == 0 ? Vertex{0, 0, 0} : Vertex{x2 / w2, y2 / w2, z2 / w2};
+}
+
+auto operator*(Triangle const &triangle, Mat4 const &transform) -> Triangle {
+    auto const &[a, b, c] = triangle;
+    return Triangle{a * transform, b * transform, c * transform};
+}
+
+auto remapToScreen(cv::Mat const &img, Triangle const &triangle) -> Triangle2D {
     auto scale = std::min(img.cols / 2, img.rows / 2);
     auto center = Vec2(img.cols / 2, img.rows / 2);
 
-    auto result = Triangle{};
+    auto result = Triangle2D{};
     for (int i = 0; i < ssize(triangle); ++i) {
         result[i] = Vec2{scale * triangle[i].x + center.x, scale * triangle[i].y + center.y};
     }
@@ -31,7 +50,7 @@ template <typename T1, typename... T2> auto max(T1 const &head, T2 const &...tai
     return res;
 }
 
-auto getTriangleBounds(cv::Mat const &img, Triangle const &triangle) -> cv::Rect {
+auto getTriangleBounds(cv::Mat const &img, Triangle2D const &triangle) -> cv::Rect {
     auto const &a = triangle[0];
     auto const &b = triangle[1];
     auto const &c = triangle[2];
@@ -44,12 +63,12 @@ auto getTriangleBounds(cv::Mat const &img, Triangle const &triangle) -> cv::Rect
     return cv::Rect(x1, y1, x2 - x1, y2 - y1);
 }
 
-auto getTriangleArea(Triangle const &triangle) -> float {
+auto getTriangleArea(Triangle2D const &triangle) -> float {
     auto const &[a, b, c] = triangle;
     return cross(c - b, b - a);
 }
 
-auto getBarycentricCoords(Triangle const &triangle, Vec2 p) -> Vec3 {
+auto getBarycentricCoords(Triangle2D const &triangle, Vec2 p) -> Vec3 {
     auto const &[a, b, c] = triangle;
 
     auto area_abc = getTriangleArea(triangle);
@@ -68,8 +87,9 @@ auto getBarycentricCoords(Triangle const &triangle, Vec2 p) -> Vec3 {
 
 auto clearImage(cv::Mat &img, cv::Vec3b color) -> void { img.setTo(color); }
 
-auto drawTriangle(cv::Mat &img, Triangle const &vertices) -> void {
-    auto vertices_scaled = remapToScreen(img, vertices);
+auto drawTriangle(cv::Mat &img, Triangle const &vertices, Mat4 const &transform) -> void {
+    auto vertices_transformed = vertices * transform;
+    auto vertices_scaled = remapToScreen(img, vertices_transformed);
 
     auto bounds = getTriangleBounds(img, vertices_scaled);
 
@@ -91,8 +111,8 @@ auto drawTriangle(cv::Mat &img, Triangle const &vertices) -> void {
     }
 }
 
-auto drawMesh(cv::Mat &img, Mesh const &mesh) -> void {
+auto drawMesh(cv::Mat &img, Mesh const &mesh, Mat4 const &transform) -> void {
     for (auto const &triangle : mesh) {
-        drawTriangle(img, triangle);
+        drawTriangle(img, triangle, transform);
     }
 }

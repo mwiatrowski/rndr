@@ -18,6 +18,7 @@ add_executable(${RENDERER_EXECUTABLE}
     src/drawing.cc
     src/main.cc
     src/math.cc
+    src/transform.cc
     src/window.cc
 )
 
