@@ -26,12 +26,12 @@ auto operator*(Triangle const &triangle, Mat4 const &transform) -> Triangle {
 }
 
 auto remapToScreen(cv::Mat const &img, Triangle const &triangle) -> Triangle2D {
-    auto scale = std::min(img.cols / 2, img.rows / 2);
+    auto scale = Vec2(img.cols / 2, img.rows / 2);
     auto center = Vec2(img.cols / 2, img.rows / 2);
 
     auto result = Triangle2D{};
     for (int i = 0; i < ssize(triangle); ++i) {
-        result[i] = Vec2{scale * triangle[i].x + center.x, scale * triangle[i].y + center.y};
+        result[i] = Vec2{scale.x * triangle[i].x + center.x, scale.y * triangle[i].y + center.y};
     }
     return result;
 }
