@@ -17,6 +17,8 @@ struct Vec3 {
     float z;
 };
 
+auto dot(Vec3 const &lhs, Vec3 const &rhs) -> float;
+
 template <int Rows, int Cols> struct Matrix : public std::array<float, Rows * Cols> {
     float &at(int row, int col) { return std::array<float, Rows * Cols>::at(row * Rows + col); }
     float const &at(int row, int col) const { return std::array<float, Rows * Cols>::at(row * Rows + col); }

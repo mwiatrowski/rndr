@@ -1,6 +1,7 @@
 #include "drawing.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "math.h"
 
@@ -35,8 +36,6 @@ auto remapToScreen(cv::Mat const &img, Triangle const &triangle) -> Triangle2D {
     }
     return result;
 }
-
-auto setPixel(cv::Mat &img, int x, int y, cv::Vec3b color) -> void { img.at<cv::Vec3b>(y, x) = color; }
 
 template <typename T1, typename... T2> auto min(T1 const &head, T2 const &...tail) {
     auto res = head;
@@ -85,34 +84,58 @@ auto getBarycentricCoords(Triangle2D const &triangle, Vec2 p) -> Vec3 {
 
 } // namespace
 
-auto clearImage(cv::Mat &img, cv::Vec3b color) -> void { img.setTo(color); }
-
-auto drawTriangle(cv::Mat &img, Triangle const &vertices, Mat4 const &transform) -> void {
+auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transform) -> void {
     auto vertices_transformed = vertices * transform;
-    auto vertices_scaled = remapToScreen(img, vertices_transformed);
+    auto vertices_scaled = remapToScreen(fb.render_target, vertices_transformed);
 
-    auto bounds = getTriangleBounds(img, vertices_scaled);
+    auto bounds = getTriangleBounds(fb.render_target, vertices_scaled);
+
+    auto inv_d = Vec3{vertices_transformed[0].z, vertices_transformed[1].z, vertices_transformed[2].z};
+
+    // TODO: This is not quite correct, triangle needs to be clipped so that the part in front of the camera can be
+    // rendered.
+    if (inv_d.x < 0 || inv_d.y < 0 || inv_d.z < 0) {
+        return;
+    }
 
     for (int y = bounds.y; y <= bounds.y + bounds.height; ++y) {
-        assert(y >= 0 && y < img.rows);
+        assert(y >= 0 && y < fb.render_target.rows);
         for (int x = bounds.x; x <= bounds.x + bounds.width; ++x) {
-            assert(x >= 0 && x < img.cols);
+            assert(x >= 0 && x < fb.render_target.cols);
 
             auto p = Vec2{static_cast<float>(x), static_cast<float>(y)};
-            auto [u, v, w] = getBarycentricCoords(vertices_scaled, p);
+            auto barycentric_coords = getBarycentricCoords(vertices_scaled, p);
+
+            auto interpolate = [&barycentric_coords](Vec3 const &values) { return dot(values, barycentric_coords); };
+
+            auto const &[u, v, w] = barycentric_coords;
             if (u < 0 || v < 0 || w < 0 || u > 1 || v > 1 || w > 1) {
                 continue;
             }
 
-            auto color =
-                cv::Vec3b{static_cast<uint8_t>(255 * u), static_cast<uint8_t>(255 * v), static_cast<uint8_t>(255 * w)};
-            setPixel(img, x, y, color);
+            auto inverse_depth = interpolate(inv_d);
+            auto depth = 1.0 / inverse_depth;
+
+            auto clamp_color = [](float color) {
+                auto rounded = std::floor(color);
+                auto clamped = std::clamp(rounded, 0.f, 255.f);
+                return static_cast<uint8_t>(clamped);
+            };
+
+            auto r = clamp_color(interpolate(Vec3{255 * inv_d.x, 0, 0}) * depth);
+            auto g = clamp_color(interpolate(Vec3{0, 255 * inv_d.y, 0}) * depth);
+            auto b = clamp_color(interpolate(Vec3{0, 0, 255 * inv_d.z}) * depth);
+
+            auto checkerboard = r ^ g ^ b ^ 0b00111111;
+            auto color = cv::Vec3b(checkerboard ^ b, checkerboard ^ g, checkerboard ^ r);
+
+            setPixel(fb, x, y, inverse_depth, color);
         }
     }
 }
 
-auto drawMesh(cv::Mat &img, Mesh const &mesh, Mat4 const &transform) -> void {
+auto drawMesh(FrameBuffer &fb, Mesh const &mesh, Mat4 const &transform) -> void {
     for (auto const &triangle : mesh) {
-        drawTriangle(img, triangle, transform);
+        drawTriangle(fb, triangle, transform);
     }
 }
