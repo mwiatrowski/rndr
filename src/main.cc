@@ -1,3 +1,6 @@
+#include <cmath>
+
+#include "benchmark.h"
 #include "drawing.h"
 #include "framebuffer.h"
 #include "math.h"
@@ -6,8 +9,8 @@
 
 namespace {
 
-auto WINDOW_WIDTH = 640;
-auto WINDOW_HEIGHT = 480;
+auto WINDOW_WIDTH = 800;
+auto WINDOW_HEIGHT = 600;
 
 auto const QUAD = Mesh{Triangle{Vec3{-0.5, -0.5, 0.2}, Vec3{-0.5, 0.5, -0.2}, Vec3{0.5, -0.5, 0.2}},
                        Triangle{Vec3{0.5, -0.5, 0.2}, Vec3{-0.5, 0.5, -0.2}, Vec3{0.5, 0.5, -0.2}}};
@@ -31,6 +34,9 @@ auto main(int argc, char *argv[]) -> int {
     auto aspect_ratio = WINDOW_WIDTH / static_cast<float>(WINDOW_HEIGHT);
     auto projection = projectionTransform(70, aspect_ratio);
 
+    auto frame_count = 0;
+    auto frame_timer = BenchmarkTimer();
+
     while (true) {
         clear(frame_buffer, cv::Vec3b(255, 200, 200));
 
@@ -44,7 +50,9 @@ auto main(int argc, char *argv[]) -> int {
             break;
         }
 
-        static auto frame_count = 0;
-        std::cout << "FRAME " << frame_count++ << std::endl;
+        auto frame_duration_ms = std::round(frame_timer.GetNanosAndReset() * 1.e-6f);
+        frame_count += 1;
+
+        std::cout << "Frame " << frame_count << " took " << frame_duration_ms << " ms" << std::endl;
     }
 }

@@ -15,6 +15,7 @@ add_link_options(-fsanitize=undefined)
 
 set(RENDERER_EXECUTABLE "rndr")
 add_executable(${RENDERER_EXECUTABLE}
+    src/benchmark.cc
     src/drawing.cc
     src/framebuffer.cc
     src/main.cc
