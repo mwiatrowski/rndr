@@ -9,11 +9,11 @@
 
 namespace {
 
-auto WINDOW_WIDTH = 800;
-auto WINDOW_HEIGHT = 600;
+auto WINDOW_WIDTH = 1920;
+auto WINDOW_HEIGHT = 1080;
 
-auto const QUAD = Mesh{Triangle{Vec3{-0.5, -0.5, 0.2}, Vec3{-0.5, 0.5, -0.2}, Vec3{0.5, -0.5, 0.2}},
-                       Triangle{Vec3{0.5, -0.5, 0.2}, Vec3{-0.5, 0.5, -0.2}, Vec3{0.5, 0.5, -0.2}}};
+auto const QUAD = Mesh{Triangle{Vec3{-0.5, -0.5, 0.3}, Vec3{-0.5, 0.5, 0.0}, Vec3{0.5, -0.5, 0.0}},
+                       Triangle{Vec3{0.5, -0.5, 0.0}, Vec3{-0.5, 0.5, 0.0}, Vec3{0.5, 0.5, -0.3}}};
 
 auto POSITIONS = std::array{
     Vec3{-2.0, 2.0, 4.0},

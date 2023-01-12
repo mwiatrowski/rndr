@@ -62,24 +62,53 @@ auto getTriangleBounds(cv::Mat const &img, Triangle2D const &triangle) -> cv::Re
     return cv::Rect(x1, y1, x2 - x1, y2 - y1);
 }
 
-auto getTriangleArea(Triangle2D const &triangle) -> float {
-    auto const &[a, b, c] = triangle;
-    return cross(c - b, b - a);
-}
+auto makeInterpolatingFunction(Triangle2D const &points, std::array<float, 3> const &values) {
+    auto const &[x1, y1] = points[0];
+    auto const &[x2, y2] = points[1];
+    auto const &[x3, y3] = points[2];
+    auto const &[v1, v2, v3] = values;
 
-auto getBarycentricCoords(Triangle2D const &triangle, Vec2 p) -> Vec3 {
-    auto const &[a, b, c] = triangle;
+    auto x_21 = x2 - x1;
+    auto x_13 = x1 - x3;
+    auto y_21 = y2 - y1;
+    auto y_13 = y1 - y3;
+    auto v_21 = v2 - v1;
+    auto v_13 = v1 - v3;
 
-    auto area_abc = getTriangleArea(triangle);
-    if (area_abc == 0.0) {
-        return Vec3(3.0, -1.0, -1.0);
+    float A, B, C;
+
+    auto area = (x_21 * y_13 - x_13 * y_21);
+    if (area != 0) {
+        A = (v_21 * y_13 - v_13 * y_21) / area;
+        B = (v_13 * x_21 - v_21 * x_13) / area;
+        C = v1 - A * x1 - B * y1;
+    } else {
+        // Special case: degenerate triangle.
+        auto s1 = x1 + y1;
+        auto s2 = x2 + y2;
+        auto s3 = x3 + y3;
+
+        Vec2 p1, p2;
+        p1 = {s1, v1};
+        if (std::abs(s1 - s2) > std::abs(s1 - s3)) {
+            p2 = {s2, v2};
+        } else {
+            p2 = {s3, v3};
+        }
+
+        if (p1.x != p2.x) {
+            A = (p2.y - p1.y) / (p2.x - p1.x);
+            B = A;
+            C = (p1.y * p2.x - p2.y * p1.x) / (p2.x - p1.x);
+        } else {
+            // Even more special case: some points overlap.
+            A = 0;
+            B = 0;
+            C = (v1 + v2 + v3) / 3;
+        }
     }
 
-    auto area_pbc = getTriangleArea({p, b, c});
-    auto area_pca = getTriangleArea({p, c, a});
-    auto area_pab = getTriangleArea({p, a, b});
-
-    return Vec3{area_pbc / area_abc, area_pca / area_abc, area_pab / area_abc};
+    return [A, B, C](float x, float y) { return A * x + B * y + C; };
 }
 
 } // namespace
@@ -90,31 +119,34 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transfo
 
     auto bounds = getTriangleBounds(fb.render_target, vertices_scaled);
 
-    auto inv_d = Vec3{vertices_transformed[0].z, vertices_transformed[1].z, vertices_transformed[2].z};
+    auto inv_depth = Vec3{vertices_transformed[0].z, vertices_transformed[1].z, vertices_transformed[2].z};
+    auto get_inv_d = makeInterpolatingFunction(vertices_scaled, {inv_depth.x, inv_depth.y, inv_depth.z});
 
     // TODO: This is not quite correct, triangle needs to be clipped so that the part in front of the camera can be
     // rendered.
-    if (inv_d.x < 0 || inv_d.y < 0 || inv_d.z < 0) {
+    if (inv_depth.x < 0 || inv_depth.y < 0 || inv_depth.z < 0) {
         return;
     }
+
+    // Barycentric coordinates
+    auto get_u = makeInterpolatingFunction(vertices_scaled, {inv_depth.x, 0, 0});
+    auto get_v = makeInterpolatingFunction(vertices_scaled, {0, inv_depth.y, 0});
 
     for (int y = bounds.y; y <= bounds.y + bounds.height; ++y) {
         assert(y >= 0 && y < fb.render_target.rows);
         for (int x = bounds.x; x <= bounds.x + bounds.width; ++x) {
             assert(x >= 0 && x < fb.render_target.cols);
 
-            auto p = Vec2{static_cast<float>(x), static_cast<float>(y)};
-            auto barycentric_coords = getBarycentricCoords(vertices_scaled, p);
+            auto inverse_depth = get_inv_d(x, y);
+            auto depth = 1.0 / inverse_depth;
 
-            auto interpolate = [&barycentric_coords](Vec3 const &values) { return dot(values, barycentric_coords); };
+            auto u = get_u(x, y) * depth;
+            auto v = get_v(x, y) * depth;
+            auto w = 1.0 - u - v;
 
-            auto const &[u, v, w] = barycentric_coords;
             if (u < 0 || v < 0 || w < 0 || u > 1 || v > 1 || w > 1) {
                 continue;
             }
-
-            auto inverse_depth = interpolate(inv_d);
-            auto depth = 1.0 / inverse_depth;
 
             auto clamp_color = [](float color) {
                 auto rounded = std::floor(color);
@@ -122,9 +154,9 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transfo
                 return static_cast<uint8_t>(clamped);
             };
 
-            auto r = clamp_color(interpolate(Vec3{255 * inv_d.x, 0, 0}) * depth);
-            auto g = clamp_color(interpolate(Vec3{0, 255 * inv_d.y, 0}) * depth);
-            auto b = clamp_color(interpolate(Vec3{0, 0, 255 * inv_d.z}) * depth);
+            auto r = clamp_color(u * 255);
+            auto g = clamp_color(v * 255);
+            auto b = clamp_color(w * 255);
 
             auto checkerboard = r ^ g ^ b ^ 0b00111111;
             auto color = cv::Vec3b(checkerboard ^ b, checkerboard ^ g, checkerboard ^ r);
