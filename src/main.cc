@@ -5,6 +5,7 @@
 #include "framebuffer.h"
 #include "math.h"
 #include "transform.h"
+#include "wavefront.h"
 #include "window.h"
 
 namespace {
@@ -12,15 +13,9 @@ namespace {
 auto WINDOW_WIDTH = 1920;
 auto WINDOW_HEIGHT = 1080;
 
-auto const QUAD = Mesh{Triangle{Vec3{-0.5, -0.5, 0.3}, Vec3{-0.5, 0.5, 0.0}, Vec3{0.5, -0.5, 0.0}},
-                       Triangle{Vec3{0.5, -0.5, 0.0}, Vec3{-0.5, 0.5, 0.0}, Vec3{0.5, 0.5, -0.3}}};
+auto POSITIONS = std::array{Vec3{0.0, 0.0, 7.0}};
 
-auto POSITIONS = std::array{
-    Vec3{-2.0, 2.0, 4.0},
-    Vec3{-4.0, -4.0, 8.0},
-    Vec3{0, 0, 1.0},
-    Vec3{1.0, 0.0, 2.0},
-};
+constexpr char MESH_FILE[] = "../resources/cow-nonormals.obj";
 
 } // namespace
 
@@ -37,12 +32,18 @@ auto main(int argc, char *argv[]) -> int {
     auto frame_count = 0;
     auto frame_timer = BenchmarkTimer();
 
+    auto displayed_mesh = readMeshFromFile(MESH_FILE);
+    if (!displayed_mesh) {
+        std::cerr << "Failed to load the mesh from file!" << std::endl;
+        return 1;
+    }
+
     while (true) {
         clear(frame_buffer, cv::Vec3b(255, 200, 200));
 
         for (auto const &position : POSITIONS) {
             auto translation = translationTransform(position);
-            drawMesh(frame_buffer, QUAD, translation * projection);
+            drawMesh(frame_buffer, *displayed_mesh, translation * projection);
         }
 
         auto key = main_window.showAndGetKey(frame_buffer.render_target);

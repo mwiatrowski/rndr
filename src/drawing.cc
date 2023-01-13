@@ -132,6 +132,14 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transfo
     auto get_u = makeInterpolatingFunction(vertices_scaled, {inv_depth.x, 0, 0});
     auto get_v = makeInterpolatingFunction(vertices_scaled, {0, inv_depth.y, 0});
 
+    auto color = std::invoke([&bounds]() {
+        auto hash = [](int val) { return static_cast<uint8_t>((val * 79) & 255); };
+        uint8_t r = hash(bounds.x);
+        uint8_t g = hash(bounds.y);
+        uint8_t b = 255 - ((r + g) / 2);
+        return cv::Vec3b{b, g, r};
+    });
+
     for (int y = bounds.y; y <= bounds.y + bounds.height; ++y) {
         assert(y >= 0 && y < fb.render_target.rows);
         for (int x = bounds.x; x <= bounds.x + bounds.width; ++x) {
@@ -147,19 +155,6 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transfo
             if (u < 0 || v < 0 || w < 0 || u > 1 || v > 1 || w > 1) {
                 continue;
             }
-
-            auto clamp_color = [](float color) {
-                auto rounded = std::floor(color);
-                auto clamped = std::clamp(rounded, 0.f, 255.f);
-                return static_cast<uint8_t>(clamped);
-            };
-
-            auto r = clamp_color(u * 255);
-            auto g = clamp_color(v * 255);
-            auto b = clamp_color(w * 255);
-
-            auto checkerboard = r ^ g ^ b ^ 0b00111111;
-            auto color = cv::Vec3b(checkerboard ^ b, checkerboard ^ g, checkerboard ^ r);
 
             setPixel(fb, x, y, inverse_depth, color);
         }

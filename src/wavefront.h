@@ -1,0 +1,8 @@
+#pragma once
+
+#include <optional>
+#include <string>
+
+#include "drawing.h"
+
+std::optional<Mesh> readMeshFromFile(std::string const &path);
