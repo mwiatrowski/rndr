@@ -132,11 +132,16 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transfo
     auto get_u = makeInterpolatingFunction(vertices_scaled, {inv_depth.x, 0, 0});
     auto get_v = makeInterpolatingFunction(vertices_scaled, {0, inv_depth.y, 0});
 
-    auto color = std::invoke([&bounds]() {
-        auto hash = [](int val) { return static_cast<uint8_t>((val * 79) & 255); };
-        uint8_t r = hash(bounds.x);
-        uint8_t g = hash(bounds.y);
-        uint8_t b = 255 - ((r + g) / 2);
+    auto normal = normalize(cross(vertices[0] - vertices[1], vertices[0] - vertices[2]));
+    auto color = std::invoke([&normal]() {
+        auto map_coord = [](float coord) {
+            auto color_val = std::round(255 * 0.5 * (coord + 1.f));
+            color_val = std::min(255.0, std::max(0.0, color_val));
+            return static_cast<uint8_t>(color_val);
+        };
+        uint8_t r = map_coord(normal.x);
+        uint8_t g = map_coord(normal.y);
+        uint8_t b = map_coord(normal.z);
         return cv::Vec3b{b, g, r};
     });
 
