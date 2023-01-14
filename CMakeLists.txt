@@ -20,6 +20,7 @@ add_executable(${RENDERER_EXECUTABLE}
     src/framebuffer.cc
     src/main.cc
     src/math.cc
+    src/mesh.cc
     src/transform.cc
     src/wavefront.cc
     src/window.cc

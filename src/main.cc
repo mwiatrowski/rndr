@@ -5,14 +5,15 @@
 #include "drawing.h"
 #include "framebuffer.h"
 #include "math.h"
+#include "mesh.h"
 #include "transform.h"
 #include "wavefront.h"
 #include "window.h"
 
 namespace {
 
-auto WINDOW_WIDTH = 800;
-auto WINDOW_HEIGHT = 600;
+auto WINDOW_WIDTH = 1920;
+auto WINDOW_HEIGHT = 1080;
 
 auto OBJECT_POSITION = Vec3{123.4352, 432.1235, -543.123};
 auto CAMERA_DISTANCE_FACTOR = 9.f;

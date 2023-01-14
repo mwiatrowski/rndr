@@ -8,8 +8,9 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <tuple>
 
-#include "drawing.h"
+#include "mesh.h"
 
 namespace {
 
@@ -50,7 +51,7 @@ std::optional<Vec3> tryParseVertex(std::string const &line) {
 }
 
 // Input must be trimmed
-std::optional<Triangle> tryParseFace(std::string const &line, std::vector<Vec3> const &vertices) {
+std::optional<std::tuple<int, int, int>> tryParseFace(std::string const &line, std::vector<Vec3> const &vertices) {
     if (!line.starts_with("f"))
         return {};
 
@@ -65,14 +66,14 @@ std::optional<Triangle> tryParseFace(std::string const &line, std::vector<Vec3> 
     if (v1 == 0 || v1 > vertices.size() || v2 == 0 || v2 > vertices.size() || v3 == 0 || v3 > vertices.size())
         return {};
 
-    return {Triangle{vertices[v1 - 1], vertices[v2 - 1], vertices[v3 - 1]}};
+    return std::make_tuple(v1 - 1, v2 - 1, v3 - 1);
 }
 
 } // namespace
 
 std::optional<Mesh> readMeshFromFile(std::string const &path) {
     auto vertices = std::vector<Vec3>{};
-    auto faces = std::vector<Triangle>{};
+    auto indices = std::vector<int>{};
 
     auto input_file = std::ifstream(path);
     if (!input_file.good()) {
@@ -89,9 +90,12 @@ std::optional<Mesh> readMeshFromFile(std::string const &path) {
         if (auto vertex = tryParseVertex(trimmed)) {
             vertices.emplace_back(std::move(*vertex));
         } else if (auto face = tryParseFace(trimmed, vertices)) {
-            faces.emplace_back(std::move(*face));
+            auto const &[v1, v2, v3] = *face;
+            indices.push_back(v1);
+            indices.push_back(v2);
+            indices.push_back(v3);
         }
     }
 
-    return faces;
+    return Mesh{.vertices = std::move(vertices), .indices = std::move(indices)};
 }

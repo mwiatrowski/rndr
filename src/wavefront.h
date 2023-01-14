@@ -3,6 +3,6 @@
 #include <optional>
 #include <string>
 
-#include "drawing.h"
+#include "mesh.h"
 
 std::optional<Mesh> readMeshFromFile(std::string const &path);

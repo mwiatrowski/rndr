@@ -1,16 +1,8 @@
 #pragma once
 
-#include <array>
-#include <vector>
-
-#include <opencv2/opencv.hpp>
-
 #include "framebuffer.h"
 #include "math.h"
+#include "mesh.h"
 
-using Vertex = Vec3;
-using Triangle = std::array<Vertex, 3>;
-using Mesh = std::vector<Triangle>;
-
-auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transform) -> void;
+auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void;
 auto drawMesh(FrameBuffer &fb, Mesh const &mesh, Mat4 const &transform) -> void;

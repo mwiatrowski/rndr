@@ -21,11 +21,6 @@ auto operator*(Vertex const &vertex, Mat4 const &transform) -> Vertex {
     return w2 == 0 ? Vertex{0, 0, 0} : Vertex{x2 / w2, y2 / w2, z2 / w2};
 }
 
-auto operator*(Triangle const &triangle, Mat4 const &transform) -> Triangle {
-    auto const &[a, b, c] = triangle;
-    return Triangle{a * transform, b * transform, c * transform};
-}
-
 auto remapToScreen(cv::Mat const &img, Triangle const &triangle) -> Triangle2D {
     auto scale = Vec2(img.cols / 2, img.rows / 2);
     auto center = Vec2(img.cols / 2, img.rows / 2);
@@ -113,13 +108,12 @@ auto makeInterpolatingFunction(Triangle2D const &points, std::array<float, 3> co
 
 } // namespace
 
-auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transform) -> void {
-    auto vertices_transformed = vertices * transform;
-    auto vertices_scaled = remapToScreen(fb.render_target, vertices_transformed);
+auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void {
+    auto vertices_scaled = remapToScreen(fb.render_target, vertices);
 
     auto bounds = getTriangleBounds(fb.render_target, vertices_scaled);
 
-    auto inv_depth = Vec3{vertices_transformed[0].z, vertices_transformed[1].z, vertices_transformed[2].z};
+    auto inv_depth = Vec3{vertices[0].z, vertices[1].z, vertices[2].z};
     auto get_inv_d = makeInterpolatingFunction(vertices_scaled, {inv_depth.x, inv_depth.y, inv_depth.z});
 
     // TODO: This is not quite correct, triangle needs to be clipped so that the part in front of the camera can be
@@ -139,9 +133,9 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transfo
             color_val = std::min(255.0, std::max(0.0, color_val));
             return static_cast<uint8_t>(color_val);
         };
-        uint8_t r = map_coord(normal.x);
-        uint8_t g = map_coord(normal.y);
-        uint8_t b = map_coord(normal.z);
+        uint8_t r = map_coord(normal.z);
+        uint8_t g = map_coord(normal.x);
+        uint8_t b = map_coord(normal.y);
         return cv::Vec3b{b, g, r};
     });
 
@@ -167,7 +161,18 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices, Mat4 const &transfo
 }
 
 auto drawMesh(FrameBuffer &fb, Mesh const &mesh, Mat4 const &transform) -> void {
-    for (auto const &triangle : mesh) {
-        drawTriangle(fb, triangle, transform);
+    assert(isMeshValid(mesh));
+
+    auto vertices_transformed = std::vector<Vertex>{};
+    vertices_transformed.reserve(mesh.vertices.size());
+    for (auto const &v : mesh.vertices) {
+        vertices_transformed.push_back(v * transform);
+    }
+
+    auto const n = std::ssize(mesh.indices);
+    for (auto i = 0; i < n; i += 3) {
+        auto triangle = Triangle{vertices_transformed[mesh.indices[i]], vertices_transformed[mesh.indices[i + 1]],
+                                 vertices_transformed[mesh.indices[i + 2]]};
+        drawTriangle(fb, std::move(triangle));
     }
 }
