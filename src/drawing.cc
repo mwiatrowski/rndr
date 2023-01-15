@@ -21,7 +21,7 @@ auto operator*(Vertex const &vertex, Mat4 const &transform) -> Vec3 {
     return w2 == 0 ? Vec3{0, 0, 0} : Vec3{x2 / w2, y2 / w2, z2 / w2};
 }
 
-using Triangle = std::array<Vec3, 3>;
+using Triangle = std::array<Vertex, 3>;
 
 auto remapToScreen(cv::Mat const &img, Triangle const &triangle) -> Triangle2D {
     auto scale = Vec2(img.cols / 2, img.rows / 2);
@@ -29,7 +29,8 @@ auto remapToScreen(cv::Mat const &img, Triangle const &triangle) -> Triangle2D {
 
     auto result = Triangle2D{};
     for (int i = 0; i < ssize(triangle); ++i) {
-        result[i] = Vec2{scale.x * triangle[i].x + center.x, scale.y * triangle[i].y + center.y};
+        auto const &[x, y, z] = triangle[i].position;
+        result[i] = Vec2{scale.x * x + center.x, scale.y * y + center.y};
     }
     return result;
 }
@@ -113,7 +114,7 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void {
 
     auto bounds = getTriangleBounds(fb.render_target, vertices_scaled);
 
-    auto inv_depth = Vec3{vertices[0].z, vertices[1].z, vertices[2].z};
+    auto inv_depth = Vec3{vertices[0].position.z, vertices[1].position.z, vertices[2].position.z};
     auto get_inv_d = makeInterpolatingFunction(vertices_scaled, {inv_depth.x, inv_depth.y, inv_depth.z});
 
     // TODO: This is not quite correct, triangle needs to be clipped so that the part in front of the camera can be
@@ -125,19 +126,6 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void {
     // Barycentric coordinates
     auto get_u = makeInterpolatingFunction(vertices_scaled, {inv_depth.x, 0, 0});
     auto get_v = makeInterpolatingFunction(vertices_scaled, {0, inv_depth.y, 0});
-
-    auto normal = normalize(cross(vertices[0] - vertices[1], vertices[0] - vertices[2]));
-    auto color = std::invoke([&normal]() {
-        auto map_coord = [](float coord) {
-            auto color_val = std::round(255 * 0.5 * (coord + 1.f));
-            color_val = std::min(255.0, std::max(0.0, color_val));
-            return static_cast<uint8_t>(color_val);
-        };
-        uint8_t r = map_coord(normal.z);
-        uint8_t g = map_coord(normal.x);
-        uint8_t b = map_coord(normal.y);
-        return cv::Vec3b{b, g, r};
-    });
 
     for (int y = bounds.y; y <= bounds.y + bounds.height; ++y) {
         assert(y >= 0 && y < fb.render_target.rows);
@@ -155,6 +143,22 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void {
                 continue;
             }
 
+            auto tx_u =
+                vertices[0].texture_coords.x * u + vertices[1].texture_coords.x * v + vertices[2].texture_coords.x * w;
+            auto tx_v =
+                vertices[0].texture_coords.y * u + vertices[1].texture_coords.y * v + vertices[2].texture_coords.y * w;
+
+            auto checkerboard = [](float a, float b) -> uint8_t {
+                auto a2 = static_cast<int>(std::round(256 * a));
+                auto a3 = a2 / 8;
+                auto b2 = static_cast<int>(std::round(256 * b));
+                auto b3 = b2 / 8;
+                return ((a3 ^ b3) & 1) ? 255 : 0;
+            };
+
+            auto color = cv::Vec3b{static_cast<uint8_t>(std::round(255 * tx_u)),
+                                   static_cast<uint8_t>(std::round(255 * tx_v)), checkerboard(tx_u, tx_v)};
+
             setPixel(fb, x, y, inverse_depth, color);
         }
     }
@@ -165,10 +169,10 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void {
 auto drawMesh(FrameBuffer &fb, Mesh const &mesh, Mat4 const &transform) -> void {
     assert(isMeshValid(mesh));
 
-    auto vertices_transformed = std::vector<Vec3>{};
+    auto vertices_transformed = std::vector<Vertex>{};
     vertices_transformed.reserve(mesh.vertices.size());
     for (auto const &v : mesh.vertices) {
-        vertices_transformed.push_back(v * transform);
+        vertices_transformed.push_back(Vertex{.position = v * transform, .texture_coords = v.texture_coords});
     }
 
     auto const n = std::ssize(mesh.indices);
