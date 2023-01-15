@@ -5,8 +5,10 @@
 
 #include "math.h"
 
-using Vertex = Vec3;
-using Triangle = std::array<Vertex, 3>;
+struct Vertex {
+    Vec3 position;
+    Vec2 texture_coords;
+};
 
 struct Mesh {
     std::vector<Vertex> vertices;

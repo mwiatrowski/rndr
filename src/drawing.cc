@@ -9,8 +9,8 @@ namespace {
 
 using Triangle2D = std::array<Vec2, 3>;
 
-auto operator*(Vertex const &vertex, Mat4 const &transform) -> Vertex {
-    auto const &[x, y, z] = vertex;
+auto operator*(Vertex const &vertex, Mat4 const &transform) -> Vec3 {
+    auto const &[x, y, z] = vertex.position;
     auto v2 = Vec4{x, y, z, 1} * transform;
 
     auto const &x2 = v2[0];
@@ -18,8 +18,10 @@ auto operator*(Vertex const &vertex, Mat4 const &transform) -> Vertex {
     auto const &z2 = v2[2];
     auto const &w2 = v2[3];
 
-    return w2 == 0 ? Vertex{0, 0, 0} : Vertex{x2 / w2, y2 / w2, z2 / w2};
+    return w2 == 0 ? Vec3{0, 0, 0} : Vec3{x2 / w2, y2 / w2, z2 / w2};
 }
+
+using Triangle = std::array<Vec3, 3>;
 
 auto remapToScreen(cv::Mat const &img, Triangle const &triangle) -> Triangle2D {
     auto scale = Vec2(img.cols / 2, img.rows / 2);
@@ -106,8 +108,6 @@ auto makeInterpolatingFunction(Triangle2D const &points, std::array<float, 3> co
     return [A, B, C](float x, float y) { return A * x + B * y + C; };
 }
 
-} // namespace
-
 auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void {
     auto vertices_scaled = remapToScreen(fb.render_target, vertices);
 
@@ -160,10 +160,12 @@ auto drawTriangle(FrameBuffer &fb, Triangle const &vertices) -> void {
     }
 }
 
+} // namespace
+
 auto drawMesh(FrameBuffer &fb, Mesh const &mesh, Mat4 const &transform) -> void {
     assert(isMeshValid(mesh));
 
-    auto vertices_transformed = std::vector<Vertex>{};
+    auto vertices_transformed = std::vector<Vec3>{};
     vertices_transformed.reserve(mesh.vertices.size());
     for (auto const &v : mesh.vertices) {
         vertices_transformed.push_back(v * transform);

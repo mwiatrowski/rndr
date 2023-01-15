@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.1)
 project (rndr CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 add_compile_options(-g)
 # add_compile_options(-O3)

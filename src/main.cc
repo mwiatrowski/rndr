@@ -16,9 +16,9 @@ auto WINDOW_WIDTH = 1920;
 auto WINDOW_HEIGHT = 1080;
 
 auto OBJECT_POSITION = Vec3{123.4352, 432.1235, -543.123};
-auto CAMERA_DISTANCE_FACTOR = 9.f;
+auto CAMERA_DISTANCE_FACTOR = 150.f;
 
-constexpr char MESH_FILE[] = "../resources/cow-nonormals.obj";
+constexpr char MESH_FILE[] = "../resources/12328_Statue_v1_L2.obj";
 
 auto nowSeconds() -> double {
     using namespace std::chrono;
@@ -60,9 +60,9 @@ auto main(int argc, char *argv[]) -> int {
             static_cast<float>(std::sin(time_now * 0.35132254 + 1.2324544)) //
         };
         auto camera_position = OBJECT_POSITION + CAMERA_DISTANCE_FACTOR * camera_displacement;
-        auto camera_transform = lookAt(camera_position, OBJECT_POSITION, Vec3{0.0, -1.0, 0.0});
+        auto camera_transform = lookAt(camera_position, OBJECT_POSITION, Vec3{0.0, 0.0, 1.0});
 
-        auto object_translation = translationTransform(OBJECT_POSITION);
+        auto object_translation = translationTransform(Vec3{0, 0, -100}) * translationTransform(OBJECT_POSITION);
         drawMesh(frame_buffer, *displayed_mesh, object_translation * camera_transform * projection);
 
         auto key = main_window.showAndGetKey(frame_buffer.render_target);
