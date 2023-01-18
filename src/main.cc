@@ -40,14 +40,14 @@ auto main(int argc, char *argv[]) -> int {
     auto aspect_ratio = WINDOW_WIDTH / static_cast<float>(WINDOW_HEIGHT);
     auto projection = projectionTransform(70, aspect_ratio);
 
-    auto frame_count = 0;
-    auto frame_timer = BenchmarkTimer();
-
     auto displayed_mesh = readMeshFromFile(MESH_FILE);
     if (!displayed_mesh) {
         std::cerr << "Failed to load the mesh from file!" << std::endl;
         return 1;
     }
+
+    auto frame_count = 0;
+    auto frame_timer = BenchmarkTimer();
 
     while (true) {
         auto time_now = nowSeconds();
